@@ -46,6 +46,7 @@ class StatementVisitor(ast.NodeVisitor):
       self.visit(tree);
       self.statements.add(len(lines) + 1);
       missing_semicolons = set();
+      errors = [];
       for statement in self.statements:
          try:
             lno = self.find_previous_nonblank_line(statement);
@@ -67,12 +68,29 @@ class StatementVisitor(ast.NodeVisitor):
             continue;
 
          missing_semicolons.add(lno);
-         yield '[E666] %d: %s missing semicolon' % (lno, name);
+         errors.append(
+            (lno, '[E666] %d: %s missing semicolon' % (lno, name))
+         );
+
+      for statement in self.statements:
+         try:
+            line = self.lines[statement];
+         except KeyError:
+            continue;
+         mo = re.match(r'(\s*)\S', line);
+         if mo:
+            if len(mo.group(1)) % 3 != 0:
+               errors.append(
+                  (statement, '[E667] %d: Indent is not a multiple of 3' % statement)
+               );
+      return errors;
+
+
 
 
 def lint(source):
    v = StatementVisitor();
-   return list(v.run(source));
+   return [e[1] for e in v.run(source)];
 
 
 if __name__ == '__main__':
